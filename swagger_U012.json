@@ -1,0 +1,284 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "description": "初版試作 くらし見守りサービス拡充第一期 APIインターフェース(Webサービス)（置き換え箇所：認証、AWSアカウント、Region、Lambda関数名）",
+    "version": "1.11.0",
+    "title": "TG_IOT_SGW"
+  },
+  "host": "rj1045ivd0.execute-api.us-east-1.amazonaws.com",
+  "basePath": "/stage",
+  "schemes": [
+    "https"
+  ],
+  "tags": [
+    {
+      "name": "Web Service API",
+      "description": "くらし見守りサービス拡充第一期 APIインターフェース"
+    }
+  ],
+  "paths": {
+    "/API-U-01": {
+      "post": {
+        "tags": [
+          "Web Service API"
+        ],
+        "summary": "ログイン認証を行う",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "Content-Type",
+            "in": "header",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "x-tgiot-api-key",
+            "in": "header",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "U01Input",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/U01Input"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "201 response",
+            "schema": {
+              "$ref": "#/definitions/U01Output"
+            }
+          },
+          "500": {
+            "description": "500 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorOutput"
+            }
+          },
+          "503": {
+            "description": "503 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorOutput"
+            }
+          }
+        },
+        "x-amazon-apigateway-request-validator": "Validate query string parameters and headers",
+        "x-amazon-apigateway-integration": {
+          "credentials": "arn:aws:iam::899307340104:role/service-role/apigAwsProxyRole",
+          "responses": {
+            ".*\"status\":500.*": {
+              "statusCode": "500",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            },
+            "default": {
+              "statusCode": "201",
+              "responseTemplates": {
+                "application/json": "#set($res = $input.path('$'))\n{\n  #foreach($key in $res.keySet())\n    \"$key\": \"$res.get($key)\"#if ($foreach.hasNext),#end\n  #end\n}"
+              }
+            },
+            ".*\"status\":503.*": {
+              "statusCode": "503",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            }
+          },
+          "requestTemplates": {
+            "application/json": "##  See http://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-mapping-template-reference.html\n##  This template will pass through all parameters including path, querystring, header, stage variables, and context through to the integration endpoint via the body/payload\n#set($allParams = $input.params())\n{\n\"body\": $input.json('$'),\n\"headers\": {\n    #foreach($key in $allParams.header.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.header.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"pathParameters\": {\n    #foreach($key in $allParams.path.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"queryParameters\": {\n    #foreach($key in $allParams.querystring.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"stage-variables\" : {\n#foreach($key in $stageVariables.keySet())\n\"$key\" : \"$util.escapeJavaScript($stageVariables.get($key))\"\n    #if($foreach.hasNext),#end\n#end\n},\n\"context\" : {\n  }\n}\n"
+          },
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:899307340104:function:U01Lambda/invocations",
+          "passthroughBehavior": "when_no_match",
+          "httpMethod": "POST",
+          "type": "aws"
+        }
+      }
+    },
+    "/API-U-02": {
+      "put": {
+        "tags": [
+          "Web Service API"
+        ],
+        "summary": "ログイン処理を行い、モバイルセッションIDや、利用地点のリストを取得する",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "Content-Type",
+            "in": "header",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "x-tgiot-login-token",
+            "in": "header",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "x-tgiot-api-key",
+            "in": "header",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/U02Output"
+            }
+          },
+          "500": {
+            "description": "500 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorOutput"
+            }
+          },
+          "503": {
+            "description": "503 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorOutput"
+            }
+          }
+        },
+        "x-amazon-apigateway-request-validator": "Validate query string parameters and headers",
+        "x-amazon-apigateway-integration": {
+          "credentials": "arn:aws:iam::899307340104:role/service-role/apigAwsProxyRole",
+          "responses": {
+            ".*\"status\":500.*": {
+              "statusCode": "500",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            },
+            "default": {
+              "statusCode": "200",
+              "responseTemplates": {
+                "application/json": "#set($res = $input.path('$'))\n{\n  #foreach($key in $res.keySet())\n    \"$key\": \"$res.get($key)\"#if ($foreach.hasNext),#end\n  #end\n}"
+              }
+            },
+            ".*\"status\":503.*": {
+              "statusCode": "503",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            }
+          },
+          "requestTemplates": {
+            "application/json": "##  See http://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-mapping-template-reference.html\n##  This template will pass through all parameters including path, querystring, header, stage variables, and context through to the integration endpoint via the body/payload\n#set($allParams = $input.params())\n{\n\"body\": $input.json('$'),\n\"headers\": {\n    #foreach($key in $allParams.header.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.header.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"pathParameters\": {\n    #foreach($key in $allParams.path.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"queryParameters\": {\n    #foreach($key in $allParams.querystring.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"stage-variables\" : {\n#foreach($key in $stageVariables.keySet())\n\"$key\" : \"$util.escapeJavaScript($stageVariables.get($key))\"\n    #if($foreach.hasNext),#end\n#end\n},\n\"context\" : {\n  }\n}\n"
+          },
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:899307340104:function:U02Lambda/invocations",
+          "passthroughBehavior": "when_no_match",
+          "httpMethod": "POST",
+          "type": "aws"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "U01Input": {
+      "type": "object",
+      "required": [
+        "login-id",
+        "password"
+      ],
+      "properties": {
+        "login-id": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        }
+      },
+      "title": "U01Input"
+    },
+    "ErrorOutput": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "title": "ErrorOutput"
+    },
+    "U01Output": {
+      "type": "object",
+      "properties": {
+        "login-token": {
+          "type": "string"
+        }
+      },
+      "title": "U01Output"
+    },
+    "U02Output": {
+      "type": "object",
+      "properties": {
+        "user-account-id": {
+          "type": "string"
+        },
+        "mobile-session-id": {
+          "type": "string"
+        },
+        "service-site-list": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "service-site-id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "current-site": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "title": "U02Output"
+    }
+  },
+  "x-amazon-apigateway-request-validators": {
+    "Validate query string parameters and headers": {
+      "validateRequestParameters": true,
+      "validateRequestBody": false
+    }
+  }
+}

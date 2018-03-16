@@ -1,0 +1,12 @@
+{
+    "python.linting.enabled": true,
+    "http.proxy": "http://web-proxy.atl.hp.com:8080/",
+    "http.proxyStrictSSL": false,
+    "editor.tabSize": 2,
+    "eslint.autoFixOnSave": true,
+    "editor.formatOnSave": true,
+    "python.formatting.autopep8Args": [
+        "--indent-size=2"
+    ],
+    "python.pythonPath": "C:\\Users\\zhenglie\\AppData\\Local\\Programs\\Python\\Python36\\python.exe"
+}

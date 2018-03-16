@@ -1,0 +1,2953 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "description": "初版試作 くらし見守りサービス拡充第一期 APIインターフェース(Webサービス)（置き換え箇所：認証、AWSアカウント、Region、Lambda関数名）",
+    "version": "1.11.0",
+    "title": "TG_IOT_SGW"
+  },
+  "host": "rj1045ivd0.execute-api.us-east-1.amazonaws.com",
+  "basePath": "/dev/",
+  "schemes": [
+    "https"
+  ],
+  "tags": [
+    {
+      "name": "Manage",
+      "description": "Authorization and authentication"
+    },
+    {
+      "name": "Devices",
+      "description": "HGW,Sensor"
+    },
+    {
+      "name": "Communication",
+      "description": "Communication module"
+    },
+    {
+      "name": "Sensors",
+      "description": "Sensor status"
+    }
+  ],
+  "paths": {
+    "/user/authentication": {
+      "post": {
+        "tags": [
+          "Manage"
+        ],
+        "summary": "ログイン認証を行う",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "スマホアプリGW/IoT業務システムの認証情報を設定する。右記設定例の通り、BASIC認証を想定。ユーザ名やパスワードは別途取り決める"
+          },
+          {
+            "name": "Content-Type",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "リクエストボディの形式（application/json）を指定する"
+          },
+          {
+            "name": "x-tgiot-api-key",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "予めIoTセンターから連携されたAPI Keyを設定する。(APIへのアクセスをコントロールするために利用する)"
+          },
+          {
+            "in": "body",
+            "name": "U01ResquestBody",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/U01ResquestBody"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "201 response",
+            "schema": {
+              "$ref": "#/definitions/U01Response"
+            }
+          },
+          "500": {
+            "description": "500 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "503": {
+            "description": "503 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-amazon-apigateway-request-validator": "Validate body,query string parameters and headers",
+        "x-amazon-apigateway-integration": {
+          "credentials": "arn:aws:iam::899307340104:role/service-role/apigAwsProxyRole",
+          "responses": {
+            ".*\"status\":500.*": {
+              "statusCode": "500",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            },
+            "default": {
+              "statusCode": "201",
+              "responseTemplates": {
+                "application/json": "#set($res = $input.path('$'))\n{\n  #foreach($key in $res.keySet())\n    \"$key\": \"$res.get($key)\"#if ($foreach.hasNext),#end\n  #end\n}"
+              }
+            },
+            ".*\"status\":503.*": {
+              "statusCode": "503",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            }
+          },
+          "requestTemplates": {
+            "application/json": "##  See http://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-mapping-template-reference.html\n##  This template will pass through all parameters including path, querystring, header, stage variables, and context through to the integration endpoint via the body/payload\n#set($allParams = $input.params())\n{\n\"body\": $input.json('$'),\n\"headers\": {\n    #foreach($key in $allParams.header.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.header.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"pathParameters\": {\n    #foreach($key in $allParams.path.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"queryParameters\": {\n    #foreach($key in $allParams.querystring.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"stage-variables\" : {\n#foreach($key in $stageVariables.keySet())\n\"$key\" : \"$util.escapeJavaScript($stageVariables.get($key))\"\n    #if($foreach.hasNext),#end\n#end\n},\n\"context\" : {\n  }\n}\n"
+          },
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:899307340104:function:U01Lambda/invocations",
+          "passthroughBehavior": "when_no_match",
+          "httpMethod": "POST",
+          "type": "aws"
+        }
+      }
+    },
+    "/user/login": {
+      "post": {
+        "tags": [
+          "Manage"
+        ],
+        "summary": "ログイン処理を行い、モバイルセッションIDや、利用地点のリストを取得する",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "スマホアプリGW/IoT業務システムの認証情報を設定する。右記設定例の通り、BASIC認証を想定。ユーザ名やパスワードは別途取り決める"
+          },
+          {
+            "name": "Content-Type",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "リクエストボディの形式（application/json）を指定する"
+          },
+          {
+            "name": "x-tgiot-login-token",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "利用者認証時にIoTセンターで発行するログイントークンを設定する　(利用者認証API以外は必須)。なお、ログイントークン更新を希望する場合は、末尾に「; renew」を付与する"
+          },
+          {
+            "name": "x-tgiot-api-key",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "予めIoTセンターから連携されたAPI Keyを設定する。(APIへのアクセスをコントロールするために利用する)"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "201 response",
+            "schema": {
+              "$ref": "#/definitions/U02Response"
+            }
+          },
+          "500": {
+            "description": "500 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "503": {
+            "description": "503 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-amazon-apigateway-request-validator": "Validate body,query string parameters and headers",
+        "x-amazon-apigateway-integration": {
+          "credentials": "arn:aws:iam::899307340104:role/service-role/apigAwsProxyRole",
+          "responses": {
+            ".*\"status\":500.*": {
+              "statusCode": "500",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            },
+            "default": {
+              "statusCode": "201",
+              "responseTemplates": {
+                "application/json": "#set($res = $input.path('$'))\n{\n  #foreach($key in $res.keySet())\n    \"$key\": \"$res.get($key)\"#if ($foreach.hasNext),#end\n  #end\n}"
+              }
+            },
+            ".*\"status\":503.*": {
+              "statusCode": "503",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            }
+          },
+          "requestTemplates": {
+            "application/json": "##  See http://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-mapping-template-reference.html\n##  This template will pass through all parameters including path, querystring, header, stage variables, and context through to the integration endpoint via the body/payload\n#set($allParams = $input.params())\n{\n\"body\": $input.json('$'),\n\"headers\": {\n    #foreach($key in $allParams.header.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.header.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"pathParameters\": {\n    #foreach($key in $allParams.path.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"queryParameters\": {\n    #foreach($key in $allParams.querystring.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"stage-variables\" : {\n#foreach($key in $stageVariables.keySet())\n\"$key\" : \"$util.escapeJavaScript($stageVariables.get($key))\"\n    #if($foreach.hasNext),#end\n#end\n},\n\"context\" : {\n  }\n}\n"
+          },
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:899307340104:function:U02Lambda/invocations",
+          "passthroughBehavior": "when_no_match",
+          "httpMethod": "POST",
+          "type": "aws"
+        }
+      }
+    },
+    "/user/logout": {
+      "post": {
+        "tags": [
+          "Manage"
+        ],
+        "summary": "ログアウトを行う",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "スマホアプリGW/IoT業務システムの認証情報を設定する。右記設定例の通り、BASIC認証を想定。ユーザ名やパスワードは別途取り決める"
+          },
+          {
+            "name": "Content-Type",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "リクエストボディの形式（application/json）を指定する"
+          },
+          {
+            "name": "x-tgiot-login-token",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "利用者認証時にIoTセンターで発行するログイントークンを設定する　(利用者認証API以外は必須)。なお、ログイントークン更新を希望する場合は、末尾に「; renew」を付与する"
+          },
+          {
+            "name": "x-tgiot-mobile-session-id",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "初回ログイン時にIoTセンターで発行するセッションIDを設定する（ログイン成功時以降、必須）"
+          },
+          {
+            "name": "x-tgiot-api-key",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "予めIoTセンターから連携されたAPI Keyを設定する。(APIへのアクセスをコントロールするために利用する)"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "201 response"
+          },
+          "500": {
+            "description": "500 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "503": {
+            "description": "503 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-amazon-apigateway-request-validator": "Validate body,query string parameters and headers",
+        "x-amazon-apigateway-integration": {
+          "credentials": "arn:aws:iam::899307340104:role/service-role/apigAwsProxyRole",
+          "responses": {
+            ".*\"status\":500.*": {
+              "statusCode": "500",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            },
+            "default": {
+              "statusCode": "201"
+            },
+            ".*\"status\":503.*": {
+              "statusCode": "503",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            }
+          },
+          "requestTemplates": {
+            "application/json": "##  See http://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-mapping-template-reference.html\n##  This template will pass through all parameters including path, querystring, header, stage variables, and context through to the integration endpoint via the body/payload\n#set($allParams = $input.params())\n{\n\"body\": $input.json('$'),\n\"headers\": {\n    #foreach($key in $allParams.header.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.header.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"pathParameters\": {\n    #foreach($key in $allParams.path.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"queryParameters\": {\n    #foreach($key in $allParams.querystring.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"stage-variables\" : {\n#foreach($key in $stageVariables.keySet())\n\"$key\" : \"$util.escapeJavaScript($stageVariables.get($key))\"\n    #if($foreach.hasNext),#end\n#end\n},\n\"context\" : {\n  }\n}\n"
+          },
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:899307340104:function:U03Lambda/invocations",
+          "passthroughBehavior": "when_no_match",
+          "httpMethod": "POST",
+          "type": "aws"
+        }
+      }
+    },
+    "/user/site-user": {
+      "get": {
+        "tags": [
+          "Manage"
+        ],
+        "summary": "利用者の属性情報を取得する",
+        "description": "API-U-04",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "スマホアプリGW/IoT業務システムの認証情報を設定する。右記設定例の通り、BASIC認証を想定。ユーザ名やパスワードは別途取り決める"
+          },
+          {
+            "name": "Content-Type",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "リクエストボディの形式（application/json）を指定する"
+          },
+          {
+            "name": "x-tgiot-login-token",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "利用者認証時にIoTセンターで発行するログイントークンを設定する　(利用者認証API以外は必須)。なお、ログイントークン更新を希望する場合は、末尾に「; renew」を付与する"
+          },
+          {
+            "name": "x-tgiot-mobile-session-id",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "初回ログイン時にIoTセンターで発行するセッションIDを設定する（ログイン成功時以降、必須）"
+          },
+          {
+            "name": "x-tgiot-api-key",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "予めIoTセンターから連携されたAPI Keyを設定する。(APIへのアクセスをコントロールするために利用する)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/U04Response"
+            }
+          },
+          "500": {
+            "description": "500 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "503": {
+            "description": "503 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-amazon-apigateway-request-validator": "Validate query string parameters and headers",
+        "x-amazon-apigateway-integration": {
+          "credentials": "arn:aws:iam::899307340104:role/service-role/apigAwsProxyRole",
+          "responses": {
+            ".*\"status\":500.*": {
+              "statusCode": "500",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            },
+            "default": {
+              "statusCode": "200",
+              "responseTemplates": {
+                "application/json": "#set($res = $input.path('$'))\n{\n  #foreach($key in $res.keySet())\n    \"$key\": \"$res.get($key)\"#if ($foreach.hasNext),#end\n  #end\n}"
+              }
+            },
+            ".*\"status\":503.*": {
+              "statusCode": "503",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            }
+          },
+          "requestTemplates": {
+            "application/json": "##  See http://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-mapping-template-reference.html\n##  This template will pass through all parameters including path, querystring, header, stage variables, and context through to the integration endpoint via the body/payload\n#set($allParams = $input.params())\n{\n\"body\": $input.json('$'),\n\"headers\": {\n    #foreach($key in $allParams.header.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.header.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"pathParameters\": {\n    #foreach($key in $allParams.path.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"queryParameters\": {\n    #foreach($key in $allParams.querystring.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"stage-variables\" : {\n#foreach($key in $stageVariables.keySet())\n\"$key\" : \"$util.escapeJavaScript($stageVariables.get($key))\"\n    #if($foreach.hasNext),#end\n#end\n},\n\"context\" : {\n  }\n}\n"
+          },
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:899307340104:function:U04Lambda/invocations",
+          "passthroughBehavior": "when_no_match",
+          "httpMethod": "POST",
+          "type": "aws"
+        }
+      },
+      "put": {
+        "tags": [
+          "Manage"
+        ],
+        "summary": "利用者の属性情報を更新する",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "スマホアプリGW/IoT業務システムの認証情報を設定する。右記設定例の通り、BASIC認証を想定。ユーザ名やパスワードは別途取り決める"
+          },
+          {
+            "name": "Content-Type",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "リクエストボディの形式（application/json）を指定する"
+          },
+          {
+            "name": "x-tgiot-login-token",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "利用者認証時にIoTセンターで発行するログイントークンを設定する　(利用者認証API以外は必須)。なお、ログイントークン更新を希望する場合は、末尾に「; renew」を付与する"
+          },
+          {
+            "name": "x-tgiot-mobile-session-id",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "初回ログイン時にIoTセンターで発行するセッションIDを設定する（ログイン成功時以降、必須）"
+          },
+          {
+            "name": "x-tgiot-api-key",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "予めIoTセンターから連携されたAPI Keyを設定する。(APIへのアクセスをコントロールするために利用する)"
+          },
+          {
+            "in": "body",
+            "name": "U05ResquestBody",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/U05ResquestBody"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response"
+          },
+          "500": {
+            "description": "500 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "503": {
+            "description": "503 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-amazon-apigateway-request-validator": "Validate body,query string parameters and headers",
+        "x-amazon-apigateway-integration": {
+          "credentials": "arn:aws:iam::899307340104:role/service-role/apigAwsProxyRole",
+          "responses": {
+            ".*\"status\":500.*": {
+              "statusCode": "500",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            },
+            "default": {
+              "statusCode": "200"
+            },
+            ".*\"status\":503.*": {
+              "statusCode": "503",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            }
+          },
+          "requestTemplates": {
+            "application/json": "##  See http://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-mapping-template-reference.html\n##  This template will pass through all parameters including path, querystring, header, stage variables, and context through to the integration endpoint via the body/payload\n#set($allParams = $input.params())\n{\n\"body\": $input.json('$'),\n\"headers\": {\n    #foreach($key in $allParams.header.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.header.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"pathParameters\": {\n    #foreach($key in $allParams.path.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"queryParameters\": {\n    #foreach($key in $allParams.querystring.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"stage-variables\" : {\n#foreach($key in $stageVariables.keySet())\n\"$key\" : \"$util.escapeJavaScript($stageVariables.get($key))\"\n    #if($foreach.hasNext),#end\n#end\n},\n\"context\" : {\n  }\n}\n"
+          },
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:899307340104:function:U05Lambda/invocations",
+          "passthroughBehavior": "when_no_match",
+          "httpMethod": "POST",
+          "type": "aws"
+        }
+      }
+    },
+    "/user/sites/{service-site-id}": {
+      "put": {
+        "tags": [
+          "Manage"
+        ],
+        "summary": "利用地点情報を更新する",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "スマホアプリGW/IoT業務システムの認証情報を設定する。右記設定例の通り、BASIC認証を想定。ユーザ名やパスワードは別途取り決める"
+          },
+          {
+            "name": "Content-Type",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "リクエストボディの形式（application/json）を指定する"
+          },
+          {
+            "name": "x-tgiot-login-token",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "利用者認証時にIoTセンターで発行するログイントークンを設定する　(利用者認証API以外は必須)。なお、ログイントークン更新を希望する場合は、末尾に「; renew」を付与する"
+          },
+          {
+            "name": "x-tgiot-mobile-session-id",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "初回ログイン時にIoTセンターで発行するセッションIDを設定する（ログイン成功時以降、必須）"
+          },
+          {
+            "name": "x-tgiot-api-key",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "予めIoTセンターから連携されたAPI Keyを設定する。(APIへのアクセスをコントロールするために利用する)"
+          },
+          {
+            "name": "service-site-id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "maxLength": 10,
+            "minLength": 10,
+            "description": "利用地点ID"
+          },
+          {
+            "in": "body",
+            "name": "U06ResquestBody",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/U06ResquestBody"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response"
+          },
+          "500": {
+            "description": "500 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "503": {
+            "description": "503 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-amazon-apigateway-request-validator": "Validate body,query string parameters and headers",
+        "x-amazon-apigateway-integration": {
+          "credentials": "arn:aws:iam::899307340104:role/service-role/apigAwsProxyRole",
+          "responses": {
+            ".*\"status\":500.*": {
+              "statusCode": "500",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            },
+            "default": {
+              "statusCode": "200"
+            },
+            ".*\"status\":503.*": {
+              "statusCode": "503",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            }
+          },
+          "requestTemplates": {
+            "application/json": "##  See http://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-mapping-template-reference.html\n##  This template will pass through all parameters including path, querystring, header, stage variables, and context through to the integration endpoint via the body/payload\n#set($allParams = $input.params())\n{\n\"body\": $input.json('$'),\n\"headers\": {\n    #foreach($key in $allParams.header.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.header.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"pathParameters\": {\n    #foreach($key in $allParams.path.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"queryParameters\": {\n    #foreach($key in $allParams.querystring.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"stage-variables\" : {\n#foreach($key in $stageVariables.keySet())\n\"$key\" : \"$util.escapeJavaScript($stageVariables.get($key))\"\n    #if($foreach.hasNext),#end\n#end\n},\n\"context\" : {\n  }\n}\n"
+          },
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:899307340104:function:U06Lambda/invocations",
+          "passthroughBehavior": "when_no_match",
+          "httpMethod": "POST",
+          "type": "aws"
+        }
+      }
+    },
+    "/user/current-service-site": {
+      "get": {
+        "tags": [
+          "Manage"
+        ],
+        "summary": "選択済みの利用地点の情報を取得する",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "スマホアプリGW/IoT業務システムの認証情報を設定する。右記設定例の通り、BASIC認証を想定。ユーザ名やパスワードは別途取り決める"
+          },
+          {
+            "name": "Content-Type",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "リクエストボディの形式（application/json）を指定する"
+          },
+          {
+            "name": "x-tgiot-login-token",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "利用者認証時にIoTセンターで発行するログイントークンを設定する　(利用者認証API以外は必須)。なお、ログイントークン更新を希望する場合は、末尾に「; renew」を付与する"
+          },
+          {
+            "name": "x-tgiot-mobile-session-id",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "初回ログイン時にIoTセンターで発行するセッションIDを設定する（ログイン成功時以降、必須）"
+          },
+          {
+            "name": "x-tgiot-api-key",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "予めIoTセンターから連携されたAPI Keyを設定する。(APIへのアクセスをコントロールするために利用する)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/U07Response"
+            }
+          },
+          "500": {
+            "description": "500 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "503": {
+            "description": "503 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-amazon-apigateway-request-validator": "Validate query string parameters and headers",
+        "x-amazon-apigateway-integration": {
+          "credentials": "arn:aws:iam::899307340104:role/service-role/apigAwsProxyRole",
+          "responses": {
+            ".*\"status\":500.*": {
+              "statusCode": "500",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            },
+            "default": {
+              "statusCode": "200",
+              "responseTemplates": {
+                "application/json": "#set($res = $input.path('$'))\n{\n  #foreach($key in $res.keySet())\n    \"$key\": \"$res.get($key)\"#if ($foreach.hasNext),#end\n  #end\n}"
+              }
+            },
+            ".*\"status\":503.*": {
+              "statusCode": "503",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            }
+          },
+          "requestTemplates": {
+            "application/json": "##  See http://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-mapping-template-reference.html\n##  This template will pass through all parameters including path, querystring, header, stage variables, and context through to the integration endpoint via the body/payload\n#set($allParams = $input.params())\n{\n\"body\": $input.json('$'),\n\"headers\": {\n    #foreach($key in $allParams.header.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.header.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"pathParameters\": {\n    #foreach($key in $allParams.path.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"queryParameters\": {\n    #foreach($key in $allParams.querystring.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"stage-variables\" : {\n#foreach($key in $stageVariables.keySet())\n\"$key\" : \"$util.escapeJavaScript($stageVariables.get($key))\"\n    #if($foreach.hasNext),#end\n#end\n},\n\"context\" : {\n  }\n}\n"
+          },
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:899307340104:function:U07Lambda/invocations",
+          "passthroughBehavior": "when_no_match",
+          "httpMethod": "POST",
+          "type": "aws"
+        }
+      },
+      "put": {
+        "tags": [
+          "Manage"
+        ],
+        "summary": "選択済みの利用地点情報を更新する",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "スマホアプリGW/IoT業務システムの認証情報を設定する。右記設定例の通り、BASIC認証を想定。ユーザ名やパスワードは別途取り決める"
+          },
+          {
+            "name": "Content-Type",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "リクエストボディの形式（application/json）を指定する"
+          },
+          {
+            "name": "x-tgiot-login-token",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "利用者認証時にIoTセンターで発行するログイントークンを設定する　(利用者認証API以外は必須)。なお、ログイントークン更新を希望する場合は、末尾に「; renew」を付与する"
+          },
+          {
+            "name": "x-tgiot-mobile-session-id",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "初回ログイン時にIoTセンターで発行するセッションIDを設定する（ログイン成功時以降、必須）"
+          },
+          {
+            "name": "x-tgiot-api-key",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "予めIoTセンターから連携されたAPI Keyを設定する。(APIへのアクセスをコントロールするために利用する)"
+          },
+          {
+            "in": "body",
+            "name": "U08ResquestBody",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/U08ResquestBody"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response"
+          },
+          "500": {
+            "description": "500 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "503": {
+            "description": "503 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-amazon-apigateway-request-validator": "Validate body,query string parameters and headers",
+        "x-amazon-apigateway-integration": {
+          "credentials": "arn:aws:iam::899307340104:role/service-role/apigAwsProxyRole",
+          "responses": {
+            ".*\"status\":500.*": {
+              "statusCode": "500",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            },
+            "default": {
+              "statusCode": "200"
+            },
+            ".*\"status\":503.*": {
+              "statusCode": "503",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            }
+          },
+          "requestTemplates": {
+            "application/json": "##  See http://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-mapping-template-reference.html\n##  This template will pass through all parameters including path, querystring, header, stage variables, and context through to the integration endpoint via the body/payload\n#set($allParams = $input.params())\n{\n\"body\": $input.json('$'),\n\"headers\": {\n    #foreach($key in $allParams.header.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.header.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"pathParameters\": {\n    #foreach($key in $allParams.path.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"queryParameters\": {\n    #foreach($key in $allParams.querystring.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"stage-variables\" : {\n#foreach($key in $stageVariables.keySet())\n\"$key\" : \"$util.escapeJavaScript($stageVariables.get($key))\"\n    #if($foreach.hasNext),#end\n#end\n},\n\"context\" : {\n  }\n}\n"
+          },
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:899307340104:function:U08Lambda/invocations",
+          "passthroughBehavior": "when_no_match",
+          "httpMethod": "POST",
+          "type": "aws"
+        }
+      }
+    },
+    "/user/notification-key": {
+      "post": {
+        "tags": [
+          "Manage"
+        ],
+        "summary": "PUSH通知用キーを登録する",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "スマホアプリGW/IoT業務システムの認証情報を設定する。右記設定例の通り、BASIC認証を想定。ユーザ名やパスワードは別途取り決める"
+          },
+          {
+            "name": "Content-Type",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "リクエストボディの形式（application/json）を指定する"
+          },
+          {
+            "name": "x-tgiot-login-token",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "利用者認証時にIoTセンターで発行するログイントークンを設定する　(利用者認証API以外は必須)。なお、ログイントークン更新を希望する場合は、末尾に「; renew」を付与する"
+          },
+          {
+            "name": "x-tgiot-mobile-session-id",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "初回ログイン時にIoTセンターで発行するセッションIDを設定する（ログイン成功時以降、必須）"
+          },
+          {
+            "name": "x-tgiot-api-key",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "予めIoTセンターから連携されたAPI Keyを設定する。(APIへのアクセスをコントロールするために利用する)"
+          },
+          {
+            "in": "body",
+            "name": "U09ResquestBody",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/U09ResquestBody"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "201 response"
+          },
+          "500": {
+            "description": "500 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "503": {
+            "description": "503 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-amazon-apigateway-request-validator": "Validate body,query string parameters and headers",
+        "x-amazon-apigateway-integration": {
+          "credentials": "arn:aws:iam::899307340104:role/service-role/apigAwsProxyRole",
+          "responses": {
+            ".*\"status\":500.*": {
+              "statusCode": "500",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            },
+            "default": {
+              "statusCode": "201"
+            },
+            ".*\"status\":503.*": {
+              "statusCode": "503",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            }
+          },
+          "requestTemplates": {
+            "application/json": "##  See http://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-mapping-template-reference.html\n##  This template will pass through all parameters including path, querystring, header, stage variables, and context through to the integration endpoint via the body/payload\n#set($allParams = $input.params())\n{\n\"body\": $input.json('$'),\n\"headers\": {\n    #foreach($key in $allParams.header.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.header.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"pathParameters\": {\n    #foreach($key in $allParams.path.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"queryParameters\": {\n    #foreach($key in $allParams.querystring.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"stage-variables\" : {\n#foreach($key in $stageVariables.keySet())\n\"$key\" : \"$util.escapeJavaScript($stageVariables.get($key))\"\n    #if($foreach.hasNext),#end\n#end\n},\n\"context\" : {\n  }\n}\n"
+          },
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:899307340104:function:U09Lambda/invocations",
+          "passthroughBehavior": "when_no_match",
+          "httpMethod": "POST",
+          "type": "aws"
+        }
+      }
+    },
+    "/user/admin-token-request": {
+      "post": {
+        "tags": [
+          "Manage"
+        ],
+        "summary": "管理者用ログイントークンを取得する",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "スマホアプリGW/IoT業務システムの認証情報を設定する。右記設定例の通り、BASIC認証を想定。ユーザ名やパスワードは別途取り決める"
+          },
+          {
+            "name": "Content-Type",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "リクエストボディの形式（application/json）を指定する"
+          },
+          {
+            "name": "x-tgiot-api-key",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "予めIoTセンターから連携されたAPI Keyを設定する。(APIへのアクセスをコントロールするために利用する)"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "201 response",
+            "schema": {
+              "$ref": "#/definitions/U01Response"
+            }
+          },
+          "500": {
+            "description": "500 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "503": {
+            "description": "503 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-amazon-apigateway-request-validator": "Validate body,query string parameters and headers",
+        "x-amazon-apigateway-integration": {
+          "credentials": "arn:aws:iam::899307340104:role/service-role/apigAwsProxyRole",
+          "responses": {
+            ".*\"status\":500.*": {
+              "statusCode": "500",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            },
+            "default": {
+              "statusCode": "201",
+              "responseTemplates": {
+                "application/json": "#set($res = $input.path('$'))\n{\n  #foreach($key in $res.keySet())\n    \"$key\": \"$res.get($key)\"#if ($foreach.hasNext),#end\n  #end\n}"
+              }
+            },
+            ".*\"status\":503.*": {
+              "statusCode": "503",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            }
+          },
+          "requestTemplates": {
+            "application/json": "##  See http://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-mapping-template-reference.html\n##  This template will pass through all parameters including path, querystring, header, stage variables, and context through to the integration endpoint via the body/payload\n#set($allParams = $input.params())\n{\n\"body\": $input.json('$'),\n\"headers\": {\n    #foreach($key in $allParams.header.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.header.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"pathParameters\": {\n    #foreach($key in $allParams.path.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"queryParameters\": {\n    #foreach($key in $allParams.querystring.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"stage-variables\" : {\n#foreach($key in $stageVariables.keySet())\n\"$key\" : \"$util.escapeJavaScript($stageVariables.get($key))\"\n    #if($foreach.hasNext),#end\n#end\n},\n\"context\" : {\n  }\n}\n"
+          },
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:899307340104:function:U10Lambda/invocations",
+          "passthroughBehavior": "when_no_match",
+          "httpMethod": "POST",
+          "type": "aws"
+        }
+      }
+    },
+    "/user/admin-login": {
+      "post": {
+        "tags": [
+          "Manage"
+        ],
+        "summary": "管理者用ログイン処理を行い、モバイルセッションIDや、利用地点のリストを取得する",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "スマホアプリGW/IoT業務システムの認証情報を設定する。右記設定例の通り、BASIC認証を想定。ユーザ名やパスワードは別途取り決める"
+          },
+          {
+            "name": "Content-Type",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "リクエストボディの形式（application/json）を指定する"
+          },
+          {
+            "name": "x-tgiot-login-token",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "利用者認証時にIoTセンターで発行するログイントークンを設定する　(利用者認証API以外は必須)。なお、ログイントークン更新を希望する場合は、末尾に「; renew」を付与する"
+          },
+          {
+            "name": "x-tgiot-api-key",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "予めIoTセンターから連携されたAPI Keyを設定する。(APIへのアクセスをコントロールするために利用する)"
+          },
+          {
+            "in": "body",
+            "name": "U11ResquestBody",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/U11ResquestBody"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "201 response",
+            "schema": {
+              "$ref": "#/definitions/U11Response"
+            }
+          },
+          "500": {
+            "description": "500 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "503": {
+            "description": "503 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-amazon-apigateway-request-validator": "Validate body,query string parameters and headers",
+        "x-amazon-apigateway-integration": {
+          "credentials": "arn:aws:iam::899307340104:role/service-role/apigAwsProxyRole",
+          "responses": {
+            ".*\"status\":500.*": {
+              "statusCode": "500",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            },
+            "default": {
+              "statusCode": "201",
+              "responseTemplates": {
+                "application/json": "#set($res = $input.path('$'))\n{\n  #foreach($key in $res.keySet())\n    \"$key\": \"$res.get($key)\"#if ($foreach.hasNext),#end\n  #end\n}"
+              }
+            },
+            ".*\"status\":503.*": {
+              "statusCode": "503",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            }
+          },
+          "requestTemplates": {
+            "application/json": "##  See http://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-mapping-template-reference.html\n##  This template will pass through all parameters including path, querystring, header, stage variables, and context through to the integration endpoint via the body/payload\n#set($allParams = $input.params())\n{\n\"body\": $input.json('$'),\n\"headers\": {\n    #foreach($key in $allParams.header.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.header.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"pathParameters\": {\n    #foreach($key in $allParams.path.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"queryParameters\": {\n    #foreach($key in $allParams.querystring.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"stage-variables\" : {\n#foreach($key in $stageVariables.keySet())\n\"$key\" : \"$util.escapeJavaScript($stageVariables.get($key))\"\n    #if($foreach.hasNext),#end\n#end\n},\n\"context\" : {\n  }\n}\n"
+          },
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:899307340104:function:U11Lambda/invocations",
+          "passthroughBehavior": "when_no_match",
+          "httpMethod": "POST",
+          "type": "aws"
+        }
+      }
+    },
+    "/devices/hgw": {
+      "get": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "HGWの情報を取得する",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "スマホアプリGW/IoT業務システムの認証情報を設定する。右記設定例の通り、BASIC認証を想定。ユーザ名やパスワードは別途取り決める"
+          },
+          {
+            "name": "Content-Type",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "リクエストボディの形式（application/json）を指定する"
+          },
+          {
+            "name": "x-tgiot-login-token",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "利用者認証時にIoTセンターで発行するログイントークンを設定する　(利用者認証API以外は必須)。なお、ログイントークン更新を希望する場合は、末尾に「; renew」を付与する"
+          },
+          {
+            "name": "x-tgiot-mobile-session-id",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "初回ログイン時にIoTセンターで発行するセッションIDを設定する（ログイン成功時以降、必須）"
+          },
+          {
+            "name": "x-tgiot-api-key",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "予めIoTセンターから連携されたAPI Keyを設定する。(APIへのアクセスをコントロールするために利用する)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/D02Response"
+            }
+          },
+          "500": {
+            "description": "500 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "503": {
+            "description": "503 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-amazon-apigateway-request-validator": "Validate query string parameters and headers",
+        "x-amazon-apigateway-integration": {
+          "credentials": "arn:aws:iam::899307340104:role/service-role/apigAwsProxyRole",
+          "responses": {
+            ".*\"status\":500.*": {
+              "statusCode": "500",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            },
+            "default": {
+              "statusCode": "200",
+              "responseTemplates": {
+                "application/json": "#set($res = $input.path('$'))\n{\n  #foreach($key in $res.keySet())\n    \"$key\": \"$res.get($key)\"#if ($foreach.hasNext),#end\n  #end\n}"
+              }
+            },
+            ".*\"status\":503.*": {
+              "statusCode": "503",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            }
+          },
+          "requestTemplates": {
+            "application/json": "##  See http://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-mapping-template-reference.html\n##  This template will pass through all parameters including path, querystring, header, stage variables, and context through to the integration endpoint via the body/payload\n#set($allParams = $input.params())\n{\n\"body\": $input.json('$'),\n\"headers\": {\n    #foreach($key in $allParams.header.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.header.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"pathParameters\": {\n    #foreach($key in $allParams.path.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"queryParameters\": {\n    #foreach($key in $allParams.querystring.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"stage-variables\" : {\n#foreach($key in $stageVariables.keySet())\n\"$key\" : \"$util.escapeJavaScript($stageVariables.get($key))\"\n    #if($foreach.hasNext),#end\n#end\n},\n\"context\" : {\n  }\n}\n"
+          },
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:899307340104:function:D02Lambda/invocations",
+          "passthroughBehavior": "when_no_match",
+          "httpMethod": "POST",
+          "type": "aws"
+        }
+      },
+      "put": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "HGWの名称（呼び名：別名）を更新する",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "スマホアプリGW/IoT業務システムの認証情報を設定する。右記設定例の通り、BASIC認証を想定。ユーザ名やパスワードは別途取り決める"
+          },
+          {
+            "name": "Content-Type",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "リクエストボディの形式（application/json）を指定する"
+          },
+          {
+            "name": "x-tgiot-login-token",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "利用者認証時にIoTセンターで発行するログイントークンを設定する　(利用者認証API以外は必須)。なお、ログイントークン更新を希望する場合は、末尾に「; renew」を付与する"
+          },
+          {
+            "name": "x-tgiot-mobile-session-id",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "初回ログイン時にIoTセンターで発行するセッションIDを設定する（ログイン成功時以降、必須）"
+          },
+          {
+            "name": "x-tgiot-api-key",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "予めIoTセンターから連携されたAPI Keyを設定する。(APIへのアクセスをコントロールするために利用する)"
+          },
+          {
+            "in": "body",
+            "name": "D03ResquestBody",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/D03ResquestBody"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response"
+          },
+          "500": {
+            "description": "500 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "503": {
+            "description": "503 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-amazon-apigateway-request-validator": "Validate body,query string parameters and headers",
+        "x-amazon-apigateway-integration": {
+          "credentials": "arn:aws:iam::899307340104:role/service-role/apigAwsProxyRole",
+          "responses": {
+            ".*\"status\":500.*": {
+              "statusCode": "500",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            },
+            "default": {
+              "statusCode": "200"
+            },
+            ".*\"status\":503.*": {
+              "statusCode": "503",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            }
+          },
+          "requestTemplates": {
+            "application/json": "##  See http://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-mapping-template-reference.html\n##  This template will pass through all parameters including path, querystring, header, stage variables, and context through to the integration endpoint via the body/payload\n#set($allParams = $input.params())\n{\n\"body\": $input.json('$'),\n\"headers\": {\n    #foreach($key in $allParams.header.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.header.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"pathParameters\": {\n    #foreach($key in $allParams.path.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"queryParameters\": {\n    #foreach($key in $allParams.querystring.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"stage-variables\" : {\n#foreach($key in $stageVariables.keySet())\n\"$key\" : \"$util.escapeJavaScript($stageVariables.get($key))\"\n    #if($foreach.hasNext),#end\n#end\n},\n\"context\" : {\n  }\n}\n"
+          },
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:899307340104:function:D03Lambda/invocations",
+          "passthroughBehavior": "when_no_match",
+          "httpMethod": "POST",
+          "type": "aws"
+        }
+      },
+      "post": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "HGWの情報を登録する",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "スマホアプリGW/IoT業務システムの認証情報を設定する。右記設定例の通り、BASIC認証を想定。ユーザ名やパスワードは別途取り決める"
+          },
+          {
+            "name": "Content-Type",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "リクエストボディの形式（application/json）を指定する"
+          },
+          {
+            "name": "x-tgiot-login-token",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "利用者認証時にIoTセンターで発行するログイントークンを設定する　(利用者認証API以外は必須)。なお、ログイントークン更新を希望する場合は、末尾に「; renew」を付与する"
+          },
+          {
+            "name": "x-tgiot-mobile-session-id",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "初回ログイン時にIoTセンターで発行するセッションIDを設定する（ログイン成功時以降、必須）"
+          },
+          {
+            "name": "x-tgiot-api-key",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "予めIoTセンターから連携されたAPI Keyを設定する。(APIへのアクセスをコントロールするために利用する)"
+          },
+          {
+            "in": "body",
+            "name": "D01ResquestBody",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/D01ResquestBody"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "201 response"
+          },
+          "500": {
+            "description": "500 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "503": {
+            "description": "503 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-amazon-apigateway-request-validator": "Validate body,query string parameters and headers",
+        "x-amazon-apigateway-integration": {
+          "credentials": "arn:aws:iam::899307340104:role/service-role/apigAwsProxyRole",
+          "responses": {
+            ".*\"status\":500.*": {
+              "statusCode": "500",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            },
+            "default": {
+              "statusCode": "201"
+            },
+            ".*\"status\":503.*": {
+              "statusCode": "503",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            }
+          },
+          "requestTemplates": {
+            "application/json": "##  See http://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-mapping-template-reference.html\n##  This template will pass through all parameters including path, querystring, header, stage variables, and context through to the integration endpoint via the body/payload\n#set($allParams = $input.params())\n{\n\"body\": $input.json('$'),\n\"headers\": {\n    #foreach($key in $allParams.header.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.header.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"pathParameters\": {\n    #foreach($key in $allParams.path.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"queryParameters\": {\n    #foreach($key in $allParams.querystring.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"stage-variables\" : {\n#foreach($key in $stageVariables.keySet())\n\"$key\" : \"$util.escapeJavaScript($stageVariables.get($key))\"\n    #if($foreach.hasNext),#end\n#end\n},\n\"context\" : {\n  }\n}\n"
+          },
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:899307340104:function:D01Lambda/invocations",
+          "passthroughBehavior": "when_no_match",
+          "httpMethod": "POST",
+          "type": "aws"
+        }
+      }
+    },
+    "/devices/hgw/serial-no": {
+      "put": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "利用地点に紐づく、HGWの情報（シリアル番号）を更新する",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "スマホアプリGW/IoT業務システムの認証情報を設定する。右記設定例の通り、BASIC認証を想定。ユーザ名やパスワードは別途取り決める"
+          },
+          {
+            "name": "Content-Type",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "リクエストボディの形式（application/json）を指定する"
+          },
+          {
+            "name": "x-tgiot-login-token",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "利用者認証時にIoTセンターで発行するログイントークンを設定する　(利用者認証API以外は必須)。なお、ログイントークン更新を希望する場合は、末尾に「; renew」を付与する"
+          },
+          {
+            "name": "x-tgiot-mobile-session-id",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "初回ログイン時にIoTセンターで発行するセッションIDを設定する（ログイン成功時以降、必須）"
+          },
+          {
+            "name": "x-tgiot-api-key",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "予めIoTセンターから連携されたAPI Keyを設定する。(APIへのアクセスをコントロールするために利用する)"
+          },
+          {
+            "in": "body",
+            "name": "D04Resquest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/D04Resquest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response"
+          },
+          "500": {
+            "description": "500 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "503": {
+            "description": "503 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-amazon-apigateway-request-validator": "Validate body,query string parameters and headers",
+        "x-amazon-apigateway-integration": {
+          "credentials": "arn:aws:iam::899307340104:role/service-role/apigAwsProxyRole",
+          "responses": {
+            ".*\"status\":500.*": {
+              "statusCode": "500",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            },
+            "default": {
+              "statusCode": "200"
+            },
+            ".*\"status\":503.*": {
+              "statusCode": "503",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            }
+          },
+          "requestTemplates": {
+            "application/json": "##  See http://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-mapping-template-reference.html\n##  This template will pass through all parameters including path, querystring, header, stage variables, and context through to the integration endpoint via the body/payload\n#set($allParams = $input.params())\n{\n\"body\": $input.json('$'),\n\"headers\": {\n    #foreach($key in $allParams.header.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.header.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"pathParameters\": {\n    #foreach($key in $allParams.path.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"queryParameters\": {\n    #foreach($key in $allParams.querystring.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"stage-variables\" : {\n#foreach($key in $stageVariables.keySet())\n\"$key\" : \"$util.escapeJavaScript($stageVariables.get($key))\"\n    #if($foreach.hasNext),#end\n#end\n},\n\"context\" : {\n  }\n}\n"
+          },
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:899307340104:function:D04Lambda/invocations",
+          "passthroughBehavior": "when_no_match",
+          "httpMethod": "POST",
+          "type": "aws"
+        }
+      }
+    },
+    "/devices/hgw/update-request": {
+      "post": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "HGWのFirmware、Configの更新依頼を行う",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "スマホアプリGW/IoT業務システムの認証情報を設定する。右記設定例の通り、BASIC認証を想定。ユーザ名やパスワードは別途取り決める"
+          },
+          {
+            "name": "Content-Type",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "リクエストボディの形式（application/json）を指定する"
+          },
+          {
+            "name": "x-tgiot-login-token",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "利用者認証時にIoTセンターで発行するログイントークンを設定する　(利用者認証API以外は必須)。なお、ログイントークン更新を希望する場合は、末尾に「; renew」を付与する"
+          },
+          {
+            "name": "x-tgiot-mobile-session-id",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "初回ログイン時にIoTセンターで発行するセッションIDを設定する（ログイン成功時以降、必須）"
+          },
+          {
+            "name": "x-tgiot-api-key",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "予めIoTセンターから連携されたAPI Keyを設定する。(APIへのアクセスをコントロールするために利用する)"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "202 response"
+          },
+          "500": {
+            "description": "500 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "503": {
+            "description": "503 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-amazon-apigateway-request-validator": "Validate body,query string parameters and headers",
+        "x-amazon-apigateway-integration": {
+          "credentials": "arn:aws:iam::899307340104:role/service-role/apigAwsProxyRole",
+          "responses": {
+            ".*\"status\":500.*": {
+              "statusCode": "500",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            },
+            "default": {
+              "statusCode": "202"
+            },
+            ".*\"status\":503.*": {
+              "statusCode": "503",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            }
+          },
+          "requestParameters": {
+            "integration.request.header.X-Amz-Invocation-Type": "'Event'"
+          },
+          "requestTemplates": {
+            "application/json": "##  See http://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-mapping-template-reference.html\n##  This template will pass through all parameters including path, querystring, header, stage variables, and context through to the integration endpoint via the body/payload\n#set($allParams = $input.params())\n{\n\"body\": $input.json('$'),\n\"headers\": {\n    #foreach($key in $allParams.header.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.header.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"pathParameters\": {\n    #foreach($key in $allParams.path.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"queryParameters\": {\n    #foreach($key in $allParams.querystring.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"stage-variables\" : {\n#foreach($key in $stageVariables.keySet())\n\"$key\" : \"$util.escapeJavaScript($stageVariables.get($key))\"\n    #if($foreach.hasNext),#end\n#end\n},\n\"context\" : { \n}\n}\n"
+          },
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:899307340104:function:D05Lambda/invocations",
+          "passthroughBehavior": "when_no_match",
+          "httpMethod": "POST",
+          "type": "aws"
+        }
+      }
+    },
+    "/devices/update-request": {
+      "post": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "デバイス状態確認を要求する",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "スマホアプリGW/IoT業務システムの認証情報を設定する。右記設定例の通り、BASIC認証を想定。ユーザ名やパスワードは別途取り決める"
+          },
+          {
+            "name": "Content-Type",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "リクエストボディの形式（application/json）を指定する"
+          },
+          {
+            "name": "x-tgiot-login-token",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "利用者認証時にIoTセンターで発行するログイントークンを設定する　(利用者認証API以外は必須)。なお、ログイントークン更新を希望する場合は、末尾に「; renew」を付与する"
+          },
+          {
+            "name": "x-tgiot-mobile-session-id",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "初回ログイン時にIoTセンターで発行するセッションIDを設定する（ログイン成功時以降、必須）"
+          },
+          {
+            "name": "x-tgiot-api-key",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "予めIoTセンターから連携されたAPI Keyを設定する。(APIへのアクセスをコントロールするために利用する)"
+          },
+          {
+            "in": "body",
+            "name": "D06ResquestBody",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/D06ResquestBody"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "202 response",
+            "schema": {
+              "$ref": "#/definitions/D06Response"
+            }
+          },
+          "500": {
+            "description": "500 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "503": {
+            "description": "503 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-amazon-apigateway-request-validator": "Validate body,query string parameters and headers",
+        "x-amazon-apigateway-integration": {
+          "credentials": "arn:aws:iam::899307340104:role/service-role/apigAwsProxyRole",
+          "responses": {
+            ".*\"status\":500.*": {
+              "statusCode": "500",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            },
+            "default": {
+              "statusCode": "202",
+              "responseTemplates": {
+                "application/json": "#set($res = $input.path('$'))\n{\n  #foreach($key in $res.keySet())\n    \"$key\": \"$res.get($key)\"#if ($foreach.hasNext),#end\n  #end\n}"
+              }
+            },
+            ".*\"status\":503.*": {
+              "statusCode": "503",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            }
+          },
+          "requestTemplates": {
+            "application/json": "##  See http://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-mapping-template-reference.html\n##  This template will pass through all parameters including path, querystring, header, stage variables, and context through to the integration endpoint via the body/payload\n#set($allParams = $input.params())\n{\n\"body\": $input.json('$'),\n\"headers\": {\n    #foreach($key in $allParams.header.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.header.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"pathParameters\": {\n    #foreach($key in $allParams.path.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"queryParameters\": {\n    #foreach($key in $allParams.querystring.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"stage-variables\" : {\n#foreach($key in $stageVariables.keySet())\n\"$key\" : \"$util.escapeJavaScript($stageVariables.get($key))\"\n    #if($foreach.hasNext),#end\n#end\n},\n\"context\" : {\n  }\n}\n"
+          },
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:899307340104:function:D06Lambda/invocations",
+          "passthroughBehavior": "when_no_match",
+          "httpMethod": "POST",
+          "type": "aws"
+        }
+      }
+    },
+    "/devices/update-request/{request-id}": {
+      "get": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "事前に要求した、デバイス状態確認要求の処理状況を取得する",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "スマホアプリGW/IoT業務システムの認証情報を設定する。右記設定例の通り、BASIC認証を想定。ユーザ名やパスワードは別途取り決める"
+          },
+          {
+            "name": "Content-Type",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "リクエストボディの形式（application/json）を指定する"
+          },
+          {
+            "name": "x-tgiot-login-token",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "利用者認証時にIoTセンターで発行するログイントークンを設定する　(利用者認証API以外は必須)。なお、ログイントークン更新を希望する場合は、末尾に「; renew」を付与する"
+          },
+          {
+            "name": "x-tgiot-mobile-session-id",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "初回ログイン時にIoTセンターで発行するセッションIDを設定する（ログイン成功時以降、必須）"
+          },
+          {
+            "name": "x-tgiot-api-key",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "予めIoTセンターから連携されたAPI Keyを設定する。(APIへのアクセスをコントロールするために利用する)"
+          },
+          {
+            "name": "request-id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 32,
+            "description": "リクエストID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/D07Response"
+            }
+          },
+          "500": {
+            "description": "500 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "503": {
+            "description": "503 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-amazon-apigateway-request-validator": "Validate query string parameters and headers",
+        "x-amazon-apigateway-integration": {
+          "credentials": "arn:aws:iam::899307340104:role/service-role/apigAwsProxyRole",
+          "responses": {
+            ".*\"status\":500.*": {
+              "statusCode": "500",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            },
+            "default": {
+              "statusCode": "200",
+              "responseTemplates": {
+                "application/json": "#set($res = $input.path('$'))\n{\n  #foreach($key in $res.keySet())\n    \"$key\": \"$res.get($key)\"#if ($foreach.hasNext),#end\n  #end\n}"
+              }
+            },
+            ".*\"status\":503.*": {
+              "statusCode": "503",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            }
+          },
+          "requestTemplates": {
+            "application/json": "##  See http://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-mapping-template-reference.html\n##  This template will pass through all parameters including path, querystring, header, stage variables, and context through to the integration endpoint via the body/payload\n#set($allParams = $input.params())\n{\n\"body\": $input.json('$'),\n\"headers\": {\n    #foreach($key in $allParams.header.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.header.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"pathParameters\": {\n    #foreach($key in $allParams.path.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"queryParameters\": {\n    #foreach($key in $allParams.querystring.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"stage-variables\" : {\n#foreach($key in $stageVariables.keySet())\n\"$key\" : \"$util.escapeJavaScript($stageVariables.get($key))\"\n    #if($foreach.hasNext),#end\n#end\n},\n\"context\" : {\n  }\n}\n"
+          },
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:899307340104:function:U07Lambda/invocations",
+          "passthroughBehavior": "when_no_match",
+          "httpMethod": "POST",
+          "type": "aws"
+        }
+      }
+    },
+    "/devices/sensors": {
+      "get": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "最新のデバイス情報リストを取得する",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "スマホアプリGW/IoT業務システムの認証情報を設定する。右記設定例の通り、BASIC認証を想定。ユーザ名やパスワードは別途取り決める"
+          },
+          {
+            "name": "Content-Type",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "リクエストボディの形式（application/json）を指定する"
+          },
+          {
+            "name": "x-tgiot-login-token",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "利用者認証時にIoTセンターで発行するログイントークンを設定する　(利用者認証API以外は必須)。なお、ログイントークン更新を希望する場合は、末尾に「; renew」を付与する"
+          },
+          {
+            "name": "x-tgiot-mobile-session-id",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "初回ログイン時にIoTセンターで発行するセッションIDを設定する（ログイン成功時以降、必須）"
+          },
+          {
+            "name": "x-tgiot-api-key",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "予めIoTセンターから連携されたAPI Keyを設定する。(APIへのアクセスをコントロールするために利用する)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/D08Response"
+            }
+          },
+          "500": {
+            "description": "500 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "503": {
+            "description": "503 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-amazon-apigateway-request-validator": "Validate query string parameters and headers",
+        "x-amazon-apigateway-integration": {
+          "credentials": "arn:aws:iam::899307340104:role/service-role/apigAwsProxyRole",
+          "responses": {
+            ".*\"status\":500.*": {
+              "statusCode": "500",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            },
+            "default": {
+              "statusCode": "200",
+              "responseTemplates": {
+                "application/json": "#set($res = $input.path('$'))\n{\n  #foreach($key in $res.keySet())\n    \"$key\": \"$res.get($key)\"#if ($foreach.hasNext),#end\n  #end\n}"
+              }
+            },
+            ".*\"status\":503.*": {
+              "statusCode": "503",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            }
+          },
+          "requestTemplates": {
+            "application/json": "##  See http://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-mapping-template-reference.html\n##  This template will pass through all parameters including path, querystring, header, stage variables, and context through to the integration endpoint via the body/payload\n#set($allParams = $input.params())\n{\n\"body\": $input.json('$'),\n\"headers\": {\n    #foreach($key in $allParams.header.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.header.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"pathParameters\": {\n    #foreach($key in $allParams.path.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"queryParameters\": {\n    #foreach($key in $allParams.querystring.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"stage-variables\" : {\n#foreach($key in $stageVariables.keySet())\n\"$key\" : \"$util.escapeJavaScript($stageVariables.get($key))\"\n    #if($foreach.hasNext),#end\n#end\n},\n\"context\" : {\n  }\n}\n"
+          },
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:899307340104:function:U08Lambda/invocations",
+          "passthroughBehavior": "when_no_match",
+          "httpMethod": "POST",
+          "type": "aws"
+        }
+      }
+    },
+    "/devices/sensors/{device-id}": {
+      "delete": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "デバイス情報を削除する",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "スマホアプリGW/IoT業務システムの認証情報を設定する。右記設定例の通り、BASIC認証を想定。ユーザ名やパスワードは別途取り決める"
+          },
+          {
+            "name": "Content-Type",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "リクエストボディの形式（application/json）を指定する"
+          },
+          {
+            "name": "x-tgiot-login-token",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "利用者認証時にIoTセンターで発行するログイントークンを設定する　(利用者認証API以外は必須)。なお、ログイントークン更新を希望する場合は、末尾に「; renew」を付与する"
+          },
+          {
+            "name": "x-tgiot-mobile-session-id",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "初回ログイン時にIoTセンターで発行するセッションIDを設定する（ログイン成功時以降、必須）"
+          },
+          {
+            "name": "x-tgiot-api-key",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "予めIoTセンターから連携されたAPI Keyを設定する。(APIへのアクセスをコントロールするために利用する)"
+          },
+          {
+            "name": "device-id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "maxLength": 13,
+            "minLength": 13,
+            "description": "施錠状態確認デバイスの利用機器ID"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "204 response"
+          },
+          "500": {
+            "description": "500 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "503": {
+            "description": "503 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-amazon-apigateway-request-validator": "Validate query string parameters and headers",
+        "x-amazon-apigateway-integration": {
+          "credentials": "arn:aws:iam::899307340104:role/service-role/apigAwsProxyRole",
+          "responses": {
+            ".*\"status\":500.*": {
+              "statusCode": "500",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            },
+            "default": {
+              "statusCode": "204"
+            },
+            ".*\"status\":503.*": {
+              "statusCode": "503",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            }
+          },
+          "requestTemplates": {
+            "application/json": "##  See http://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-mapping-template-reference.html\n##  This template will pass through all parameters including path, querystring, header, stage variables, and context through to the integration endpoint via the body/payload\n#set($allParams = $input.params())\n{\n\"body\": $input.json('$'),\n\"headers\": {\n    #foreach($key in $allParams.header.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.header.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"pathParameters\": {\n    #foreach($key in $allParams.path.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"queryParameters\": {\n    #foreach($key in $allParams.querystring.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"stage-variables\" : {\n#foreach($key in $stageVariables.keySet())\n\"$key\" : \"$util.escapeJavaScript($stageVariables.get($key))\"\n    #if($foreach.hasNext),#end\n#end\n},\n\"context\" : {\n  }\n}\n"
+          },
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:899307340104:function:D12Lambda/invocations",
+          "passthroughBehavior": "when_no_match",
+          "httpMethod": "POST",
+          "type": "aws"
+        }
+      },
+      "put": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "デバイス情報（デバイス名称（呼び名：別名））を更新する",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "スマホアプリGW/IoT業務システムの認証情報を設定する。右記設定例の通り、BASIC認証を想定。ユーザ名やパスワードは別途取り決める"
+          },
+          {
+            "name": "Content-Type",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "リクエストボディの形式（application/json）を指定する"
+          },
+          {
+            "name": "x-tgiot-login-token",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "利用者認証時にIoTセンターで発行するログイントークンを設定する　(利用者認証API以外は必須)。なお、ログイントークン更新を希望する場合は、末尾に「; renew」を付与する"
+          },
+          {
+            "name": "x-tgiot-mobile-session-id",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "初回ログイン時にIoTセンターで発行するセッションIDを設定する（ログイン成功時以降、必須）"
+          },
+          {
+            "name": "x-tgiot-api-key",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "予めIoTセンターから連携されたAPI Keyを設定する。(APIへのアクセスをコントロールするために利用する)"
+          },
+          {
+            "name": "device-id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "maxLength": 13,
+            "minLength": 13,
+            "description": "施錠状態確認デバイスの利用機器ID"
+          },
+          {
+            "in": "body",
+            "name": "D09ResquestBody",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/D09ResquestBody"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response"
+          },
+          "500": {
+            "description": "500 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "503": {
+            "description": "503 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-amazon-apigateway-request-validator": "Validate body,query string parameters and headers",
+        "x-amazon-apigateway-integration": {
+          "credentials": "arn:aws:iam::899307340104:role/service-role/apigAwsProxyRole",
+          "responses": {
+            ".*\"status\":500.*": {
+              "statusCode": "500",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            },
+            "default": {
+              "statusCode": "200"
+            },
+            ".*\"status\":503.*": {
+              "statusCode": "503",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            }
+          },
+          "requestTemplates": {
+            "application/json": "##  See http://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-mapping-template-reference.html\n##  This template will pass through all parameters including path, querystring, header, stage variables, and context through to the integration endpoint via the body/payload\n#set($allParams = $input.params())\n{\n\"body\": $input.json('$'),\n\"headers\": {\n    #foreach($key in $allParams.header.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.header.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"pathParameters\": {\n    #foreach($key in $allParams.path.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"queryParameters\": {\n    #foreach($key in $allParams.querystring.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"stage-variables\" : {\n#foreach($key in $stageVariables.keySet())\n\"$key\" : \"$util.escapeJavaScript($stageVariables.get($key))\"\n    #if($foreach.hasNext),#end\n#end\n},\n\"context\" : {\n  }\n}\n"
+          },
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:899307340104:function:D09Lambda/invocations",
+          "passthroughBehavior": "when_no_match",
+          "httpMethod": "POST",
+          "type": "aws"
+        }
+      }
+    },
+    "/devices/sensors/low-battely-confirmation/{device-id}": {
+      "put": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "利用機器の電池切れ通知を認識し、電池切れ情報のステータスを更新する",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "スマホアプリGW/IoT業務システムの認証情報を設定する。右記設定例の通り、BASIC認証を想定。ユーザ名やパスワードは別途取り決める"
+          },
+          {
+            "name": "Content-Type",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "リクエストボディの形式（application/json）を指定する"
+          },
+          {
+            "name": "x-tgiot-login-token",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "利用者認証時にIoTセンターで発行するログイントークンを設定する　(利用者認証API以外は必須)。なお、ログイントークン更新を希望する場合は、末尾に「; renew」を付与する"
+          },
+          {
+            "name": "x-tgiot-mobile-session-id",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "初回ログイン時にIoTセンターで発行するセッションIDを設定する（ログイン成功時以降、必須）"
+          },
+          {
+            "name": "x-tgiot-api-key",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "予めIoTセンターから連携されたAPI Keyを設定する。(APIへのアクセスをコントロールするために利用する)"
+          },
+          {
+            "name": "device-id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "maxLength": 13,
+            "minLength": 13,
+            "description": "利用機器ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response"
+          },
+          "500": {
+            "description": "500 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "503": {
+            "description": "503 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-amazon-apigateway-request-validator": "Validate body,query string parameters and headers",
+        "x-amazon-apigateway-integration": {
+          "credentials": "arn:aws:iam::899307340104:role/service-role/apigAwsProxyRole",
+          "responses": {
+            ".*\"status\":500.*": {
+              "statusCode": "500",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            },
+            "default": {
+              "statusCode": "200"
+            },
+            ".*\"status\":503.*": {
+              "statusCode": "503",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            }
+          },
+          "requestTemplates": {
+            "application/json": "##  See http://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-mapping-template-reference.html\n##  This template will pass through all parameters including path, querystring, header, stage variables, and context through to the integration endpoint via the body/payload\n#set($allParams = $input.params())\n{\n\"body\": $input.json('$'),\n\"headers\": {\n    #foreach($key in $allParams.header.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.header.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"pathParameters\": {\n    #foreach($key in $allParams.path.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"queryParameters\": {\n    #foreach($key in $allParams.querystring.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"stage-variables\" : {\n#foreach($key in $stageVariables.keySet())\n\"$key\" : \"$util.escapeJavaScript($stageVariables.get($key))\"\n    #if($foreach.hasNext),#end\n#end\n},\n\"context\" : {\n  }\n}\n"
+          },
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:899307340104:function:D10Lambda/invocations",
+          "passthroughBehavior": "when_no_match",
+          "httpMethod": "POST",
+          "type": "aws"
+        }
+      }
+    },
+    "/devices/sensors/low-battely-history/{device-id}": {
+      "put": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "機器から通知された電池電圧低下情報の履歴を取得する",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "スマホアプリGW/IoT業務システムの認証情報を設定する。右記設定例の通り、BASIC認証を想定。ユーザ名やパスワードは別途取り決める"
+          },
+          {
+            "name": "Content-Type",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "リクエストボディの形式（application/json）を指定する"
+          },
+          {
+            "name": "x-tgiot-login-token",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "利用者認証時にIoTセンターで発行するログイントークンを設定する　(利用者認証API以外は必須)。なお、ログイントークン更新を希望する場合は、末尾に「; renew」を付与する"
+          },
+          {
+            "name": "x-tgiot-mobile-session-id",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "初回ログイン時にIoTセンターで発行するセッションIDを設定する（ログイン成功時以降、必須）"
+          },
+          {
+            "name": "x-tgiot-api-key",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "予めIoTセンターから連携されたAPI Keyを設定する。(APIへのアクセスをコントロールするために利用する)"
+          },
+          {
+            "name": "device-id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "maxLength": 13,
+            "minLength": 13,
+            "description": "利用機器ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/D11Response"
+            }
+          },
+          "500": {
+            "description": "500 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "503": {
+            "description": "503 response",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-amazon-apigateway-request-validator": "Validate body,query string parameters and headers",
+        "x-amazon-apigateway-integration": {
+          "credentials": "arn:aws:iam::899307340104:role/service-role/apigAwsProxyRole",
+          "responses": {
+            ".*\"status\":500.*": {
+              "statusCode": "500",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            },
+            "default": {
+              "statusCode": "200",
+              "responseTemplates": {
+                "application/json": "#set($res = $input.path('$'))\n{\n  #foreach($key in $res.keySet())\n    \"$key\": \"$res.get($key)\"#if ($foreach.hasNext),#end\n  #end\n}"
+              }
+            },
+            ".*\"status\":503.*": {
+              "statusCode": "503",
+              "responseTemplates": {
+                "application/json": "#set($res = $util.parseJson($input.path('$.errorMessage')))\n{\n \"error\" : {\n   \"code\" : \"$res.messageId\"\n}\n}"
+              }
+            }
+          },
+          "requestTemplates": {
+            "application/json": "##  See http://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-mapping-template-reference.html\n##  This template will pass through all parameters including path, querystring, header, stage variables, and context through to the integration endpoint via the body/payload\n#set($allParams = $input.params())\n{\n\"body\": $input.json('$'),\n\"headers\": {\n    #foreach($key in $allParams.header.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.header.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"pathParameters\": {\n    #foreach($key in $allParams.path.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"queryParameters\": {\n    #foreach($key in $allParams.querystring.keySet())\n        \"$key\": \"$util.escapeJavaScript($allParams.querystring.get($key))\"\n        #if ($foreach.hasNext),#end\n    #end\n},\n\"stage-variables\" : {\n#foreach($key in $stageVariables.keySet())\n\"$key\" : \"$util.escapeJavaScript($stageVariables.get($key))\"\n    #if($foreach.hasNext),#end\n#end\n},\n\"context\" : {\n  }\n}\n"
+          },
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:899307340104:function:D11Lambda/invocations",
+          "passthroughBehavior": "when_no_match",
+          "httpMethod": "POST",
+          "type": "aws"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "U01ResquestBody": {
+      "type": "object",
+      "required": [
+        "login-id",
+        "password"
+      ],
+      "properties": {
+        "login-id": {
+          "type": "string",
+          "description": "ログインID",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "password": {
+          "type": "string",
+          "description": "パスワード",
+          "minLength": 1,
+          "maxLength": 20
+        }
+      },
+      "title": "U01ResquestBody"
+    },
+    "U05ResquestBody": {
+      "type": "object",
+      "properties": {
+        "usage-agreement-date-time": {
+          "type": "string",
+          "description": "利用者規約同意日時（YYYYMMDDhhmmss（UTC））※パスワードといずれか必須",
+          "minLength": 14,
+          "maxLength": 14
+        },
+        "password": {
+          "type": "string",
+          "description": "パスワード※利用者規約同意日次といずれか必須",
+          "minLength": 1,
+          "maxLength": 20
+        }
+      },
+      "title": "U05ResquestBody"
+    },
+    "U06ResquestBody": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "利用地点の名称",
+          "minLength": 1,
+          "maxLength": 8
+        }
+      },
+      "title": "U06ResquestBody"
+    },
+    "U08ResquestBody": {
+      "type": "object",
+      "required": [
+        "service-site-id"
+      ],
+      "properties": {
+        "service-site-id": {
+          "type": "string",
+          "description": "利用地点ID",
+          "minLength": 10,
+          "maxLength": 10
+        }
+      },
+      "title": "U08ResquestBody"
+    },
+    "U09ResquestBody": {
+      "type": "object",
+      "required": [
+        "push-notification-key"
+      ],
+      "properties": {
+        "push-notification-key": {
+          "type": "string",
+          "description": "PUSH通知用キー",
+          "minLength": 6,
+          "maxLength": 6
+        }
+      },
+      "title": "U09ResquestBody"
+    },
+    "U11ResquestBody": {
+      "type": "object",
+      "required": [
+        "user-account-id"
+      ],
+      "properties": {
+        "user-account-id": {
+          "type": "string",
+          "description": "利用者アカウントID",
+          "minLength": 10,
+          "maxLength": 10
+        }
+      },
+      "title": "U11ResquestBody"
+    },
+    "D01ResquestBody": {
+      "type": "object",
+      "required": [
+        "serial-no"
+      ],
+      "properties": {
+        "serial-no": {
+          "type": "string",
+          "description": "HGWシリアル番号",
+          "minLength": 16,
+          "maxLength": 16
+        }
+      },
+      "title": "D01ResquestBody"
+    },
+    "D03ResquestBody": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "HGW名称",
+          "minLength": 1,
+          "maxLength": 16
+        }
+      },
+      "title": "D03ResquestBody"
+    },
+    "D04Resquest": {
+      "type": "object",
+      "required": [
+        "serial-no"
+      ],
+      "properties": {
+        "serial-no": {
+          "type": "string",
+          "description": "変更後のHGWシリアル番号",
+          "minLength": 16,
+          "maxLength": 16
+        }
+      },
+      "title": "D04Resquest"
+    },
+    "D06ResquestBody": {
+      "type": "object",
+      "properties": {
+        "device-id": {
+          "type": "string",
+          "description": "利用機器ID(このパラメータが指定された場合は、特定の利用機器の状態取得要求を受付ける。このパラメータが指定されなかった場合は、利用地点に紐づく全デバイスの状態取得の要求として受け付ける)",
+          "minLength": 13,
+          "maxLength": 13
+        }
+      },
+      "title": "D06ResquestBody"
+    },
+    "D09ResquestBody": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "デバイス名称",
+          "minLength": 1,
+          "maxLength": 16
+        }
+      },
+      "title": "D09ResquestBody"
+    },
+    "ErrorResponse": {
+      "type": "object",
+      "required": [
+        "error"
+      ],
+      "properties": {
+        "error": {
+          "type": "object",
+          "required": [
+            "code"
+          ],
+          "properties": {
+            "code": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "title": "ErrorResponse"
+    },
+    "U01Response": {
+      "type": "object",
+      "required": [
+        "login-token"
+      ],
+      "properties": {
+        "login-token": {
+          "type": "string",
+          "description": "ログイントークン",
+          "minLength": 32,
+          "maxLength": 32
+        }
+      },
+      "title": "U01Response"
+    },
+    "ServiceSite": {
+      "type": "object",
+      "required": [
+        "service-site-id",
+        "name",
+        "status",
+        "current-site"
+      ],
+      "properties": {
+        "service-site-id": {
+          "type": "string",
+          "description": "利用地点ID(契約解除された利用地点IDは返信しない)",
+          "minLength": 10,
+          "maxLength": 10
+        },
+        "name": {
+          "type": "string",
+          "description": "利用地点の名称",
+          "minLength": 1,
+          "maxLength": 8
+        },
+        "status": {
+          "type": "string",
+          "description": "利用地点契約ステータス(1: 契約中、2: 契約停止)",
+          "minLength": 1,
+          "maxLength": 1
+        },
+        "current-site": {
+          "type": "string",
+          "description": "利用地点が選択済みかどうかの状態(0: 未選択の利用地点、1: 選択済み利用地点)",
+          "minLength": 1,
+          "maxLength": 1
+        }
+      },
+      "title": "ServiceSite"
+    },
+    "U02Response": {
+      "type": "object",
+      "required": [
+        "user-account-id",
+        "mobile-session-id",
+        "service-site-list"
+      ],
+      "properties": {
+        "user-account-id": {
+          "type": "string",
+          "description": "利用者アカウントID",
+          "minLength": 10,
+          "maxLength": 10
+        },
+        "mobile-session-id": {
+          "type": "string",
+          "description": "モバイルセッションID",
+          "minLength": 16,
+          "maxLength": 16
+        },
+        "service-site-list": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/ServiceSite"
+          },
+          "description": "利用地点の配列"
+        }
+      },
+      "title": "U02Response"
+    },
+    "U04Response": {
+      "type": "object",
+      "required": [
+        "service-site-list"
+      ],
+      "properties": {
+        "usage-agreement-date-time": {
+          "type": "string",
+          "description": "利用規約同意日時。ISO8601拡張形式で表記。(YYYY-MM-DDThh:mm:ssZ),利用規約に同意していない場合は、この項目は出力されない",
+          "minLength": 20,
+          "maxLength": 20
+        },
+        "service-site-list": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/ServiceSite"
+          },
+          "description": "利用地点の配列"
+        }
+      },
+      "title": "U04Response"
+    },
+    "U07Response": {
+      "type": "object",
+      "properties": {
+        "service-site-id": {
+          "type": "string",
+          "description": "選択済み利用地点ID。利用地点が選択されていない場合は、この項目は出力されない",
+          "minLength": 10,
+          "maxLength": 10
+        }
+      },
+      "title": "U07Response"
+    },
+    "U11Response": {
+      "type": "object",
+      "required": [
+        "mobile-session-id",
+        "service-site-list"
+      ],
+      "properties": {
+        "mobile-session-id": {
+          "type": "string",
+          "description": "モバイルセッションID",
+          "minLength": 16,
+          "maxLength": 16
+        },
+        "service-site-list": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ServiceSite"
+          },
+          "description": "利用地点の配列"
+        }
+      },
+      "title": "U11Response"
+    },
+    "D02Response": {
+      "type": "object",
+      "required": [
+        "hgw-info"
+      ],
+      "properties": {
+        "hgw-info": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "object",
+            "required": [
+              "serial-no",
+              "status",
+              "install-date-time",
+              "firmware-update-enabled"
+            ],
+            "properties": {
+              "serial-no": {
+                "type": "string",
+                "description": "HGWシリアル番号",
+                "minLength": 16,
+                "maxLength": 16
+              },
+              "status": {
+                "type": "string",
+                "description": "HGWステータス(0: HGW受付、1: 利用中、7: Firmware更新中、8: 利用不可、9: 契約解除)",
+                "minLength": 1,
+                "maxLength": 1
+              },
+              "install-date-time": {
+                "type": "string",
+                "description": "HGW設置日時。「2.HGWシリアル番号更新」でシリアル番号を更新した、もしくは「3.HGW登録」でHGW登録を受け付けた日時が設定される。ISO8601拡張形式で表記。(YYYY-MM-DDThh:mm:ssZ)",
+                "minLength": 20,
+                "maxLength": 20
+              },
+              "name": {
+                "type": "string",
+                "description": "名称",
+                "minLength": 1,
+                "maxLength": 16
+              },
+              "firmware-version": {
+                "type": "string",
+                "description": "HGWのFirmwareバージョン",
+                "minLength": 7,
+                "maxLength": 9
+              },
+              "config-version": {
+                "type": "string",
+                "description": "HGWのConfigバージョン",
+                "minLength": 4,
+                "maxLength": 6
+              },
+              "firmware-update-enabled": {
+                "type": "string",
+                "description": "Firmwareの更新有無(0: Firmware更新無、1: Firmware更新有)",
+                "minLength": 1,
+                "maxLength": 1
+              }
+            }
+          },
+          "description": "HGW情報"
+        }
+      },
+      "title": "D02Response"
+    },
+    "D06Response": {
+      "type": "object",
+      "required": [
+        "request-id"
+      ],
+      "properties": {
+        "request-id": {
+          "type": "string",
+          "description": "リクエストID",
+          "minLength": 32,
+          "maxLength": 32
+        }
+      },
+      "title": "D06Response"
+    },
+    "D07Response": {
+      "type": "object",
+      "required": [
+        "request-status"
+      ],
+      "properties": {
+        "request-status": {
+          "type": "string",
+          "description": "リクエストの実行ステータス(0:実行完了、1:実行中)",
+          "minLength": 1,
+          "maxLength": 1
+        }
+      },
+      "title": "D07Response"
+    },
+    "D08Response": {
+      "type": "object",
+      "required": [
+        "device-info-list"
+      ],
+      "properties": {
+        "device-info-list": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "object",
+            "required": [
+              "device-id",
+              "device-type",
+              "serial-no",
+              "install-date",
+              "latest-communication-status",
+              "latest-communication-date-time",
+              "low-battery",
+              "low-battery-event-date-time"
+            ],
+            "properties": {
+              "device-id": {
+                "type": "string",
+                "description": "利用機器ID",
+                "minLength": 13,
+                "maxLength": 13
+              },
+              "device-type": {
+                "type": "string",
+                "description": "デバイスタイプ",
+                "minLength": 3,
+                "maxLength": 3
+              },
+              "serial-no": {
+                "type": "string",
+                "description": "シリアル番号",
+                "minLength": 16,
+                "maxLength": 16
+              },
+              "install-date": {
+                "type": "string",
+                "description": "設置日時。ISO8601拡張形式で表記。(YYYY-MM-DDThh:mm:ssZ)",
+                "minLength": 20,
+                "maxLength": 20
+              },
+              "name": {
+                "type": "string",
+                "description": "利用機器の名称",
+                "minLength": 1,
+                "maxLength": 16
+              },
+              "latest-communication-status": {
+                "type": "string",
+                "description": "最新の通信ステータス(0: 正常、1: 異常)",
+                "minLength": 1,
+                "maxLength": 1
+              },
+              "latest-communication-date-time": {
+                "type": "string",
+                "description": "最新のF-RITメッセージ受信日時。ISO8601拡張形式で表記。(YYYY-MM-DDThh:mm:ssZ)",
+                "minLength": 20,
+                "maxLength": 20
+              },
+              "low-battery": {
+                "type": "string",
+                "description": "電池電圧低下有無(0: 電池電圧低下無、1: 電池電圧低下有)",
+                "minLength": 1,
+                "maxLength": 1
+              },
+              "low-battery-event-date-time": {
+                "type": "string",
+                "description": "電池電圧低下発生日時。電池電圧低下有の場合のみ設定。ISO8601拡張形式で表記。(YYYY-MM-DDThh:mm:ssZ)",
+                "minLength": 20,
+                "maxLength": 20
+              }
+            }
+          },
+          "description": "デバイス情報リスト"
+        }
+      },
+      "title": "D08Response"
+    },
+    "D11Response": {
+      "type": "object",
+      "required": [
+        "low-battely-history"
+      ],
+      "properties": {
+        "low-battely-history": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "object",
+            "properties": {
+              "low-battery-event-date-time": {
+                "type": "string",
+                "description": "電池電圧低下発生日時。電池電圧低下有の場合のみ設定。ISO8601拡張形式で表記。(YYYY-MM-DDThh:mm:ssZ)",
+                "minLength": 20,
+                "maxLength": 20
+              },
+              "last-notification-date-time": {
+                "type": "string",
+                "description": "電池電圧低下最終通知日時。電池電圧低下有の場合のみ設定。ISO8601拡張形式で表記。(YYYY-MM-DDThh:mm:ssZ)",
+                "minLength": 20,
+                "maxLength": 20
+              }
+            }
+          },
+          "description": "電池電圧低下履歴。電池電圧低下履歴が無かった場合、空の配列を返信する。"
+        }
+      },
+      "title": "D11Response"
+    }
+  },
+  "x-amazon-apigateway-request-validators": {
+    "Validate query string parameters and headers": {
+      "validateRequestParameters": true,
+      "validateRequestBody": false
+    },
+    "Validate body,query string parameters and headers": {
+      "validateRequestParameters": true,
+      "validateRequestBody": true
+    }
+  }
+}
