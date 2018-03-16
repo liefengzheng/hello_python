@@ -2,9 +2,53 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-si = pd.Series(np.arange(20),index=np.arange(1,21))
-print(si)
+d1 = pd.Series(2*np.random.normal(size = 100)+3)
 
+def stats(x):
+    return pd.Series([x.count(),x.min(),x.idxmin(),
+               x.quantile(.25),x.median(),
+               x.quantile(.75),x.mean(),
+               x.max(),x.idxmax(),
+               x.mad(),x.var(),
+               x.std(),x.skew(),x.kurt()],
+              index = ['Count','Min','Whicn_Min',
+                       'Q1','Median','Q3','Mean',
+                       'Max','Which_Max','Mad',
+                       'Var','Std','Skew','Kurt'])
+print(stats(d1))
+
+# print(d1.count())  #非空元素计算
+# print(d1.min())    #最小值
+# print(d1.max())    #最大值
+# print(d1.idxmin()) #最小值的位置，类似于R中的which.min函数
+# print(d1.idxmax()) #最大值的位置，类似于R中的which.max函数
+# print(d1.quantile(0.1))    #10%分位数
+# print(d1.sum())    #求和
+# print(d1.mean())   #均值
+# print(d1.median()) #中位数
+# print(d1.mode())   #众数
+# print(d1.var())    #方差
+# print(d1.std())    #标准差
+# print(d1.mad())    #平均绝对偏差
+# print(d1.skew())   #偏度
+# print(d1.kurt())   #峰度
+# print(d1.describe())   #一次性输出多个描述性统计指标
+
+# data = pd.read_csv(r'pandas_demo\student.csv')
+# print(data[(data['gender']=='Female') & (data['age']>20)][['Student ID','age']])
+
+# s4 = pd.Series(np.array([1,1,2,3,5,8]))
+# s4.index = ['a','b','c','d','e','f']
+# print(s4)
+
+# print(s4['e'])
+# print(s4[[1,3,5]])
+
+# s5 = pd.Series(np.array([10,15,20,30,55,80]), 
+#                index = ['a','b','c','d','e','f'])
+# s6 = pd.Series(np.array([12,11,13,15,14,16]), 
+#                index = ['a','c','g','b','d','f'])
+# print(s5+s6)                             
 # data6= pd.DataFrame({'c1':np.random.randn(20),'c2':np.random.randn(20)})
 # print(data6)
 # data6_cut = pd.cut(data6.c1,4)
